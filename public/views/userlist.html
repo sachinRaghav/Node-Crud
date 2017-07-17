@@ -1,0 +1,72 @@
+<style>
+arrow-down:after,.arrow-up:after{
+ content: ' ';
+ position: relative;
+ left: 2px;
+ border: 8px solid transparent;
+}
+
+.arrow-down:after{
+ top: 10px;
+ border-top-color: black;
+}
+
+.arrow-up:after{
+ bottom: 15px;
+ border-bottom-color: black;
+}
+
+.arrow-down,.arrow-up{
+ padding-right: 10px;
+}
+  </style>
+<div class="container">
+  <div class="panel panel-default">
+    <div class="panel-heading">User List</div>
+    <div class="panel-body">
+          <div class="input-group">
+        <input type="text" class="form-control" placeholder="Search" ng-change='searchUser()' ng-model="txtSearch" >
+    </div>
+
+        <table class="table">
+    <thead>
+      <tr>
+        <th ng-click='sortColumn("name")' ng-class='sortClass("name")'>Name</th>
+        <th ng-click='sortColumn("email")' ng-class='sortClass("email")'>Email</th>
+        <th>Mobile</th>
+        <th>Edit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="x in users">
+        <td>{{ x.name }}</td>
+        <td>{{ x.email }}</td>
+        <td>{{ x.mobile }}</td>
+         <td><a ng-href="{{customerLink}}{{x._id}}">edit</a></td>
+      </tr>
+     
+    </tbody>
+     
+  </table>
+ 
+<paging
+    page="currentPage" 
+    page-size="pageSize" 
+    total="total"
+    text-first="{{textFirst}}"
+    text-last="{{textLast}}"
+    text-next="{{textNext}}"
+    text-prev="{{textPrev}}"
+    text-title-page="Page {page} Hover Over"
+    text-title-first="{{textTitleFirst}}"
+    text-title-last="{{textTitleLast}}"
+    text-title-next="{{textTitleNext}}"
+    text-title-prev="{{textTitlePrev}}"
+    show-prev-next="true"
+    show-first-last="true"
+     paging-action="DoCtrlPagingAct(page)">
+</paging>  
+
+      </div>
+  </div>
+</div>
