@@ -85,8 +85,27 @@ userSchema.pre('save', function(next) {
     });
   });
 });
+appUserSchema.pre('save', function(next) {
+  var user = this;
+  if (!user.isModified('password')) return next();
+  bcrypt.genSalt(10, function(err, salt) {
+    if (err) return next(err);
+    bcrypt.hash(user.password, salt, function(err, hash) {
+      if (err) return next(err);
+      user.password = hash;
+      next();
+    });
+  });
+});
 
 userSchema.methods.comparePassword = function(candidatePassword, cb) {
+  bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
+    if (err) return cb(err);
+    cb(null, isMatch);
+  });
+};
+
+appUserSchema.methods.comparePassword= function(candidatePassword, cb) {
   bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
     if (err) return cb(err);
     cb(null, isMatch);
@@ -111,8 +130,12 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 function ensureAuthenticated(req, res, next) {
+      console.log(req.headers.authorization);
+
   if (req.headers.authorization) {
     var token = req.headers.authorization.split(' ')[1];
+    console.log(token);
+
     try {
       var decoded = jwt.decode(token, tokenSecret);
       if (decoded.exp <= Date.now()) {
@@ -128,10 +151,41 @@ function ensureAuthenticated(req, res, next) {
     return res.send(401);
   }
 }
+function Authenticated(req, res, next) {
+ if (req.headers.authorization) {
+   var token = req.headers.authorization.split(' ')[1];
+   // var token = req.headers.token;
+    try {
+      var decoded = jwt.decode(token, tokenSecret);
+      if (decoded.exp <= Date.now()) {
+        res.send(400, 'Access token has expired');
+      } else {
+        req.user = decoded.appuser;
+        return next();
+      }
+    } catch (err) {
+       return res.send(401);
+ 
+    // return res.send(500, 'Error parsing token');
+    }
+ } else {
+    return res.send(401);
+  }
+
+}
 
 function createJwtToken(user) {
   var payload = {
     user: user,
+    iat: new Date().getTime(),
+    exp: moment().add('days', 7).valueOf()
+  };
+  return jwt.encode(payload, tokenSecret);
+}
+
+function createuserJwtToken(user) {
+  var payload = {
+    appuser: user,
     iat: new Date().getTime(),
     exp: moment().add('days', 7).valueOf()
   };
@@ -162,6 +216,35 @@ app.post('/auth/login', function(req, res, next) {
     });
   });
 });
+
+app.post('/api/login', function(req, res, next) {
+
+  AppUser.findOne({ email: req.body.email }, function(err, appuser) {
+   
+    if (!appuser) return res.send(401, 'User does not exist');
+    if(appuser.password==req.body.password)
+    {
+ var token = createuserJwtToken(appuser);
+      res.send({ token: token });
+  
+
+    }
+    else
+    {
+res.send(401, 'Invalid email and/or password');
+    }
+    // appuser.comparePassword(req.body.password, function(err, isMatch) {
+      
+    //   if (!isMatch) return res.send(401, 'Invalid email and/or password');
+    //   var token = createJwtToken(appuser);
+    //   res.send({ token: token });
+    // });
+  });
+});
+
+
+
+
 
 app.post('/api/register', function(req, res, next) {
   var appuser = new AppUser({
@@ -228,9 +311,8 @@ var regexValue='\.*'+getValue+'\.';
   
   //});
 });
-app.get('/api/userlist', function(req, res, next) {
-  console.log(req.query.pageSize);
-
+app.get('/api/userlist',Authenticated,function(req, res, next) {
+  
 
   AppUser.collection.find({}).toArray(function(err, result) {
        res.send(result);
